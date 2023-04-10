@@ -1,0 +1,30 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "multi_window",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--local-engine-src-path",
+        "/Users/admin/Desktop/myCode/flutter/flutter_engine/engine/src/",
+        "--local-engine=host_debug_unopt"
+      ]
+    },
+    {
+      "name": "multi_window (profile mode)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "profile"
+    },
+    {
+      "name": "multi_window (release mode)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release"
+    }
+  ]
+}
