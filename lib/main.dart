@@ -95,10 +95,10 @@ void _paintMultiView() {
         Offset(0, 500.0), _CreateColoredBox(red1, size1)); // red - flutter
     builder1.pop();
     builder.pop();
-    // ui.FlutterView(0, ui.PlatformDispatcher.instance).render(builder.build());
-    // ui.FlutterView(1, ui.PlatformDispatcher.instance).render(builder1.build());
-    ui.PlatformDispatcher.instance.views.first.render(builder.build());
-    ui.PlatformDispatcher.instance.views.last.render(builder1.build());
+    ui.FlutterView(0, ui.PlatformDispatcher.instance).render(builder1.build());
+    // ui.FlutterView(1, ui.PlatformDispatcher.instance).render(builder.build());
+    // ui.PlatformDispatcher.instance.views.first.render(builder.build());
+    // ui.PlatformDispatcher.instance.views.last.render(builder1.build());
   };
 }
 
@@ -111,7 +111,7 @@ void main(List<String> args) {
   // // if (args != null && args.length > 0 && args.first == 'secondWindow') {
   runMultiApp(viewCollection);
   // runApp(Home());
-  runApp;
+  // runApp;
   // return;
   // }
 
@@ -166,6 +166,8 @@ class _HomeState extends State<Home> {
   var a = ui.PlatformDispatcher.instance;
   @override
   Widget build(BuildContext context) {
+    print('main page');
+    print(MediaQuery.of(context).size.width);
     return MaterialApp(
       theme: ThemeData(
           primaryColor: colorChange.value,
@@ -217,6 +219,8 @@ class _Home2State extends State<Home2> {
   @override
   Widget build(BuildContext context) {
     print(View.of(context).physicalSize);
+    print(MediaQuery.of(context).size.width);
+    // return Container(width: 100,height: 100,color: Colors.red);
     return MaterialApp(
       theme: ThemeData(
           primaryColor: _primaryColor,

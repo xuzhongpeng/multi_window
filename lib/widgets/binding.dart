@@ -28,36 +28,51 @@ mixin MyWidgetsBinding
     platformDispatcher.onScheduleWarmUpFrame = _handlePersistentFrameCallback;
   }
 
-  void _handlePersistentFrameCallback() {
-    _attachWidgetList();
+  void _handlePersistentFrameCallback(Object id) {
+    _attachWidgetList(id);
   }
 
-  List<Element> elements = [];
-  Map<Element, BuildOwner> owners = {};
+  Map<Object, MultiViewOwner> multiViewOwnerMaps = {};
 
-  List<Object> viewIds = [];
+  Iterable<MultiViewOwner> get multiViewOwners => multiViewOwnerMaps.values;
+
   ViewCollectionFun? _viewCollectionFun;
-  void _attachWidgetList() {
+  void _attachWidgetList(Object viewId) {
     var viewCollection = _viewCollectionFun!();
     for (final view in viewCollection.views) {
+      if (view.view.viewId != viewId) break;
       var buildOwner = BuildOwner();
       buildOwner.onBuildScheduled = _handleBuildScheduled;
-      if (!viewIds.contains(view.view.viewId)) {
-        final pipelineOwner = PipelineOwner();
-        WidgetsBinding.instance.pipelineOwner.adoptChild(pipelineOwner);
-        final renderView = RenderView(
-            configuration: createViewConfiguration(), view: view.view);
-        pipelineOwner.rootNode = renderView;
-        renderView.prepareInitialFrame();
-        var element = RenderObjectToWidgetAdapter<RenderBox>(
-          container: renderView,
-          debugShortDescription: view.child.toStringShort(),
-          child: view,
-        ).attachToRenderTree(buildOwner, null);
-        elements.add(element);
-        owners[element] = buildOwner;
-        scheduleWarmUpFrame();
-        viewIds.add(view.view.viewId);
+      final pipelineOwner = PipelineOwner();
+      WidgetsBinding.instance.pipelineOwner.adoptChild(pipelineOwner);
+      final renderView = RenderView(
+          configuration: createViewConfigurationByView(view.view),
+          view: view.view);
+      pipelineOwner.rootNode = renderView;
+      renderView.prepareInitialFrame();
+      var element = RenderObjectToWidgetAdapter<RenderBox>(
+        container: renderView,
+        debugShortDescription: view.child.toStringShort(),
+        child: view,
+      ).attachToRenderTree(buildOwner, null);
+      multiViewOwnerMaps[viewId] = MultiViewOwner(
+          element: element,
+          buildOwner: buildOwner,
+          renderView: renderView,
+          flutterView: view.view);
+      // scheduleWarmUpFrame();
+    }
+  }
+
+  @override
+  void handleMetricsChanged(Object viewId) {
+    var multiViewOwner = multiViewOwnerMaps[viewId];
+    if (multiViewOwner != null) {
+      multiViewOwner.renderView.configuration =
+          createViewConfigurationByView(
+              multiViewOwner.flutterView);
+      if (multiViewOwner.renderView.child != null) {
+        scheduleForcedFrame();
       }
     }
   }
@@ -69,8 +84,9 @@ mixin MyWidgetsBinding
       return true;
     }());
 
-    for (Element element in elements) {
-      owners[element]!.reassemble(element, BindingBase.debugReassembleConfig);
+    for (MultiViewOwner multiViewOwner in multiViewOwners) {
+      multiViewOwner.buildOwner.reassemble(
+          multiViewOwner.element, BindingBase.debugReassembleConfig);
     }
     return super.performReassemble();
   }
@@ -86,9 +102,12 @@ mixin MyWidgetsBinding
       debugShortDescription: 'root',
       child: viewCollection.rootWidget,
     ).attachToRenderTree(buildOwner, null);
-    elements.add(element);
-    owners[element] = buildOwner;
-    viewIds.add(platformDispatcher.implicitView!.viewId);
+    multiViewOwnerMaps[platformDispatcher.implicitView!.viewId] =
+        (MultiViewOwner(
+            element: element,
+            buildOwner: buildOwner,
+            renderView: renderView,
+            flutterView: platformDispatcher.implicitView!));
     scheduleWarmUpFrame();
     ensureVisualUpdate();
   }
@@ -123,9 +142,9 @@ mixin MyWidgetsBinding
     }
 
     try {
-      for (Element element in elements) {
-        owners[element]!.buildScope(element);
-        owners[element]!.finalizeTree();
+      for (MultiViewOwner multiViewOwner in multiViewOwners) {
+        multiViewOwner.buildOwner.buildScope(multiViewOwner.element);
+        multiViewOwner.buildOwner.finalizeTree();
       }
       super.drawFrame();
     } finally {}
@@ -146,6 +165,28 @@ mixin MyWidgetsBinding
   void _handleBuildScheduled() {
     ensureVisualUpdate();
   }
+
+  ViewConfiguration createViewConfigurationByView(FlutterView view) {
+    final double devicePixelRatio = view.devicePixelRatio;
+    return ViewConfiguration(
+      size: view.physicalSize / devicePixelRatio,
+      devicePixelRatio: devicePixelRatio,
+    );
+  }
+}
+
+class MultiViewOwner {
+  final Element element;
+  final BuildOwner buildOwner;
+  final RenderView renderView;
+  final FlutterView flutterView;
+
+  MultiViewOwner({
+    required this.element,
+    required this.buildOwner,
+    required this.renderView,
+    required this.flutterView,
+  });
 }
 
 class MyWidgetsFlutterBinding extends BindingBase
