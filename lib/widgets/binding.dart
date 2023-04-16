@@ -77,7 +77,7 @@ mixin MyWidgetsBinding
   }
 
   @override
-  void hitTestByRenderView(int viewId, HitTestResult result, Offset position) {
+  void hitTestByViewId(int viewId, HitTestResult result, Offset position) {
     var multiViewOwner = multiViewOwnerMaps[viewId];
     if (multiViewOwner != null) {
       multiViewOwner.renderView.hitTest(result, position: position);
