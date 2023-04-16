@@ -229,6 +229,21 @@ class _Home2State extends State<Home2> {
         appBar: AppBar(
           title: Text('第二个界面'),
         ),
+        body: Center(
+          child: TextButton(
+              child: Text('切换主题'),
+              onPressed: () {
+                setState(() {
+                  var primaryColor = colorChange.value;
+                  colorChange.value = primaryColor
+                      .withBlue(primaryColor.blue + 20)
+                      .withGreen(primaryColor.green + 20)
+                      .withRed(primaryColor.red - 20);
+                });
+                // WidgetsBinding.instance.scheduleForcedFrame();
+              },
+            ),
+        ),
       ),
     );
   }

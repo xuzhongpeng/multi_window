@@ -69,11 +69,19 @@ mixin MyWidgetsBinding
     var multiViewOwner = multiViewOwnerMaps[viewId];
     if (multiViewOwner != null) {
       multiViewOwner.renderView.configuration =
-          createViewConfigurationByView(
-              multiViewOwner.flutterView);
+          createViewConfigurationByView(multiViewOwner.flutterView);
       if (multiViewOwner.renderView.child != null) {
         scheduleForcedFrame();
       }
+    }
+  }
+
+  @override
+  void hitTestByRenderView(int viewId, HitTestResult result, Offset position) {
+    var multiViewOwner = multiViewOwnerMaps[viewId];
+    if (multiViewOwner != null) {
+      multiViewOwner.renderView.hitTest(result, position: position);
+      result.add(HitTestEntry(this));
     }
   }
 
