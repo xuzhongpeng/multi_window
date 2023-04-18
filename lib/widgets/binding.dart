@@ -28,6 +28,11 @@ mixin MyWidgetsBinding
     platformDispatcher.onScheduleWarmUpFrame = _handlePersistentFrameCallback;
   }
 
+  bool _readyToProduceFrames = false;
+
+  @override
+  bool get framesEnabled => super.framesEnabled && _readyToProduceFrames;
+
   void _handlePersistentFrameCallback(Object id) {
     _attachWidgetList(id);
   }
@@ -56,10 +61,12 @@ mixin MyWidgetsBinding
         child: view,
       ).attachToRenderTree(buildOwner, null);
       multiViewOwnerMaps[viewId] = MultiViewOwner(
-          element: element,
-          buildOwner: buildOwner,
-          renderView: renderView,
-          flutterView: view.view);
+        element: element,
+        buildOwner: buildOwner,
+        renderView: renderView,
+        flutterView: view.view,
+        pipelineOwner: pipelineOwner,
+      );
       // scheduleWarmUpFrame();
     }
   }
@@ -70,9 +77,10 @@ mixin MyWidgetsBinding
     if (multiViewOwner != null) {
       multiViewOwner.renderView.configuration =
           createViewConfigurationByView(multiViewOwner.flutterView);
-      if (multiViewOwner.renderView.child != null) {
-        scheduleForcedFrame();
-      }
+      // if (multiViewOwner.renderView.child != null) {
+      //   scheduleForcedFrame();
+      // }
+      drawFrameById(viewId);
     }
   }
 
@@ -102,6 +110,7 @@ mixin MyWidgetsBinding
   void attachWidget({ViewCollectionFun? viewCollectionFun}) {
     // setRoot
     _viewCollectionFun ??= viewCollectionFun;
+    _readyToProduceFrames = true;
     var viewCollection = _viewCollectionFun!();
     var buildOwner = BuildOwner();
     buildOwner.onBuildScheduled = _handleBuildScheduled;
@@ -112,16 +121,38 @@ mixin MyWidgetsBinding
     ).attachToRenderTree(buildOwner, null);
     multiViewOwnerMaps[platformDispatcher.implicitView!.viewId] =
         (MultiViewOwner(
-            element: element,
-            buildOwner: buildOwner,
-            renderView: renderView,
-            flutterView: platformDispatcher.implicitView!));
+      element: element,
+      buildOwner: buildOwner,
+      renderView: renderView,
+      flutterView: platformDispatcher.implicitView!,
+      pipelineOwner: pipelineOwner,
+    ));
     scheduleWarmUpFrame();
     ensureVisualUpdate();
   }
 
   bool _needToReportFirstFrame = true;
   final Completer<void> _firstFrameCompleter = Completer<void>();
+
+  /// 只绘制对应view
+  void drawFrameById(Object viewId) {
+    var multiViewOwner = multiViewOwnerMaps[viewId];
+    if (multiViewOwner != null) {
+      multiViewOwner.buildOwner.buildScope(multiViewOwner.element);
+      multiViewOwner.buildOwner.finalizeTree();
+      // drawFrame
+      multiViewOwner.pipelineOwner.flushLayout();
+      multiViewOwner.pipelineOwner.flushCompositingBits();
+      multiViewOwner.pipelineOwner.flushPaint();
+      if (sendFramesToEngine) {
+        (multiViewOwner.pipelineOwner.rootNode as RenderView)
+            .compositeFrame(); // this sends the bits to the GPU
+        multiViewOwner.pipelineOwner
+            .flushSemantics(); // this also sends the semantics to the OS.
+      }
+    }
+  }
+
   @override
   void drawFrame() {
     TimingsCallback? firstFrameCallback;
@@ -188,12 +219,14 @@ class MultiViewOwner {
   final BuildOwner buildOwner;
   final RenderView renderView;
   final FlutterView flutterView;
+  final PipelineOwner pipelineOwner;
 
   MultiViewOwner({
     required this.element,
     required this.buildOwner,
     required this.renderView,
     required this.flutterView,
+    required this.pipelineOwner,
   });
 }
 
